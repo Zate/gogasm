@@ -1,4 +1,4 @@
-## GOGASM - Go Gaming Automated Server Manager
+# GOGASM - Go Gaming Automated Server Manager
 
 Automated server management for game servers.
 
