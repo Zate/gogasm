@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"time"
+
+	"github.com/caarlos0/env"
+	// "github.com/zate/gogasm/rcon"
 )
 
 var debug = false
@@ -135,25 +138,14 @@ func CheckHeader(hdr byte, chk byte) bool {
 	return true
 }
 
-func main() {
+// CheckStatus sends a Server Query Protocol request and prses the response
+func CheckStatus(Cfg config) {
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
 	a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
 
-	argsWithProg := os.Args
-	if len(argsWithProg) < 3 {
-		fmt.Printf("Usage: %s <server> <port>\n", filepath.Base(argsWithProg[0]))
-		os.Exit(1)
-	}
-
-	server := argsWithProg[1]
-	port := argsWithProg[2]
-	if len(argsWithProg) > 3 {
-		debug = true
-	}
-	if len(argsWithProg) > 4 {
-		colorize = true
-	}
+	server := Cfg.AtlasIP
+	port := Cfg.AtlasQueryPort
 	seconds := 15
 	timeout := time.Duration(seconds) * time.Second
 
@@ -416,4 +408,41 @@ func main() {
 
 		fmt.Printf("%s %d %.0f\n", info, score, duration)
 	}
+	// r, err := rcon.Dial(server+":27025", "changeme")
+	// r.Write()
+	os.Exit(0)
+}
+
+func main() {
+
+	Cfg := config{}
+	err := env.Parse(&Cfg)
+
+	if CheckNoError(err) == false {
+		os.Exit(1)
+	}
+
+	fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
+	fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
+
+	statusPtr := flag.Bool("status", false, "Check the status of the server")
+	flag.Parse()
+	if statusPtr != nil {
+		CheckStatus(Cfg)
+	}
+	// argsWithProg := os.Args
+	// if len(argsWithProg) < 3 {
+	// 	fmt.Printf("Usage: %s <server> <port> or set ATLASIP and ATLASQUERYPORT Environment Variables\n", filepath.Base(argsWithProg[0]))
+	// 	os.Exit(1)
+	// }
+
+	// server := argsWithProg[1]
+	// port := argsWithProg[2]
+	// if len(argsWithProg) > 3 {
+	// 	debug = true
+	// }
+	// if len(argsWithProg) > 4 {
+	// 	colorize = true
+	// }
+
 }
