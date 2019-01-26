@@ -143,7 +143,6 @@ func CheckStatus(Cfg config) {
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
 	a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
-
 	server := Cfg.AtlasIP
 	port := Cfg.AtlasQueryPort
 	seconds := 15
@@ -422,12 +421,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
-	fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
-
 	statusPtr := flag.Bool("status", false, "Check the status of the server")
+	serverPtr := flag.String("s", "", "IP Address of the server to connect to")
+	portPtr := flag.String("p", "", "Port on the server to connect to")
 	flag.Parse()
-	if statusPtr != nil {
+
+	if *statusPtr == true {
+		if len(*serverPtr) > 0 {
+			Cfg.AtlasIP = *serverPtr
+		}
+		if len(*portPtr) > 0 {
+			Cfg.AtlasQueryPort = *portPtr
+		}
+		fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
+		fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
 		CheckStatus(Cfg)
 	}
 	// argsWithProg := os.Args
