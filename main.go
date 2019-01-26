@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -140,9 +138,10 @@ func CheckHeader(hdr byte, chk byte) bool {
 
 // CheckStatus sends a Server Query Protocol request and prses the response
 func CheckStatus(Cfg config) {
+	sinfo := serverInfo{}
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
-	a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
+	//a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
 	server := Cfg.AtlasIP
 	port := Cfg.AtlasQueryPort
 	seconds := 15
@@ -188,45 +187,52 @@ func CheckStatus(Cfg config) {
 	var sPtr int
 	var info string
 	sPtr = 5
-	info, sPtr = GetString(BytesReceived, sPtr)
-	fmt.Printf("NAME: %s\n", info)
+	sinfo.Name, sPtr = GetString(BytesReceived, sPtr)
+	// fmt.Printf("NAME: %s\n", sinfo.Name)
 
-	info, sPtr = GetString(BytesReceived, sPtr)
-	fmt.Printf("MAP: %s\n", info)
+	sinfo.Map, sPtr = GetString(BytesReceived, sPtr)
+	// fmt.Printf("MAP: %s\n", sinfo.Map)
 
-	info, sPtr = GetString(BytesReceived, sPtr)
-	fmt.Printf("FOLDER: %s\n", info)
+	sinfo.Folder, sPtr = GetString(BytesReceived, sPtr)
+	// fmt.Printf("FOLDER: %s\n", sinfo.Folder)
 
-	info, sPtr = GetString(BytesReceived, sPtr)
-	fmt.Printf("GAME: %s\n", info)
+	sinfo.Game, sPtr = GetString(BytesReceived, sPtr)
+	// fmt.Printf("GAME: %s\n", info)
 
-	var id uint16
-	id, sPtr = GetUInt16(BytesReceived, sPtr)
-	fmt.Printf("ID: %d\n", id)
+	//var id uint16
+	sinfo.ID, sPtr = GetUInt16(BytesReceived, sPtr)
+	//fmt.Printf("ID: %d\n", id)
 
-	fmt.Printf("PLAYERS: %d\n", BytesReceived[sPtr])
+	sinfo.Players = BytesReceived[sPtr]
+	//fmt.Printf("PLAYERS: %d\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("MAXPLAYERS: %d\n", BytesReceived[sPtr])
+	sinfo.MaxPlayers = BytesReceived[sPtr]
+	//fmt.Printf("MAXPLAYERS: %d\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("BOTS: %d\n", BytesReceived[sPtr])
+	sinfo.Bot = BytesReceived[sPtr]
+	//fmt.Printf("BOTS: %d\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("SERVERTYPE: %c\n", BytesReceived[sPtr])
+	sinfo.ServerType = BytesReceived[sPtr]
+	//fmt.Printf("SERVERTYPE: %c\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("ENVIRONMENT: %c\n", BytesReceived[sPtr])
+	sinfo.Environment = BytesReceived[sPtr]
+	//fmt.Printf("ENVIRONMENT: %c\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("VISIBILITY: %d\n", BytesReceived[sPtr])
+	sinfo.Visibility = BytesReceived[sPtr]
+	//fmt.Printf("VISIBILITY: %d\n", BytesReceived[sPtr])
 	sPtr++
 
-	fmt.Printf("VAC: %d\n", BytesReceived[sPtr])
+	sinfo.Vac = BytesReceived[sPtr]
+	//fmt.Printf("VAC: %d\n", BytesReceived[sPtr])
 	sPtr++
 
-	info, sPtr = GetString(BytesReceived, sPtr)
-	fmt.Printf("VERSION: %s\n", info)
+	sinfo.Version, sPtr = GetString(BytesReceived, sPtr)
+	//fmt.Printf("VERSION: %s\n", info)
 
 	if n > sPtr {
 		// EDF
@@ -235,9 +241,9 @@ func CheckStatus(Cfg config) {
 
 		// PORT
 		if edf&0x80 != 0 {
-			var port uint16
-			port, _ = GetUInt16(BytesReceived, sPtr)
-			fmt.Printf("PORT: %d\n", port)
+			//var port uint16
+			sinfo.Port, _ = GetUInt16(BytesReceived, sPtr)
+			//fmt.Printf("PORT: %d\n", port)
 		}
 
 		// STEAMID
@@ -247,8 +253,8 @@ func CheckStatus(Cfg config) {
 
 		// Keywords
 		if edf&0x20 != 0 {
-			info, sPtr = GetString(BytesReceived, sPtr)
-			fmt.Printf("KEYWORDS: %s\n", info)
+			sinfo.KeyWords, sPtr = GetString(BytesReceived, sPtr)
+			//fmt.Printf("KEYWORDS: %s\n", info)
 		}
 	}
 
@@ -300,8 +306,8 @@ func CheckStatus(Cfg config) {
 	}
 
 	elapsed := (elapsed1 + elapsed2 + elapsed3) / 3
-
-	fmt.Printf("PING: %d\n", int(elapsed)/1000000)
+	sinfo.Ping = int(elapsed) / 1000000
+	//fmt.Printf("PING: %d\n", int(elapsed)/1000000)
 
 	if !CheckHeader(BytesReceived[4], 0x45) {
 		os.Exit(2)
@@ -311,9 +317,9 @@ func CheckStatus(Cfg config) {
 	sPtr = 5
 	var rules uint16
 	rules, sPtr = GetUInt16(BytesReceived, sPtr)
-
+	rulesMap := make(map[string]string)
 	if rules > 0 {
-		fmt.Println("RULE LIST:")
+		//fmt.Println("RULE LIST:")
 	}
 
 	for i := uint16(0); i < rules; i++ {
@@ -322,91 +328,99 @@ func CheckStatus(Cfg config) {
 		// Value
 		val := ""
 		val, sPtr = GetString(BytesReceived, sPtr)
-
-		fmt.Printf("%s %s\n", info, val)
+		rulesMap[info] = val
+		//fmt.Printf("%s %s\n", info, val)
 	}
+	// ATLASFRIENDLYNAME_s
+	// PLAYERS: 26
+	// PING: 96
+	// CUSTOMSERVERNAME_s
+	// ISHOMESERVER_b
+	// SESSIONFLAGS string
+	// SESSIONISPVE_i 1
+	fmt.Printf("%s | %s | %d | %d | %s | %s | %s", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
 
-	// Get Players
-	sPtr = 5
+	// // Get Players
+	// sPtr = 5
 
-	if debug {
-		fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
-	}
-	n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
+	// if debug {
+	// 	fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
+	// }
+	// n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
 
-	if BytesReceived == nil || n == 0 {
-		fmt.Fprintln(os.Stderr, "Received no data!")
-		os.Exit(2)
-	}
+	// if BytesReceived == nil || n == 0 {
+	// 	fmt.Fprintln(os.Stderr, "Received no data!")
+	// 	os.Exit(2)
+	// }
 
-	if !CheckHeader(BytesReceived[4], 0x41) {
-		os.Exit(2)
-	}
+	// if !CheckHeader(BytesReceived[4], 0x41) {
+	// 	os.Exit(2)
+	// }
 
-	// Challenge number
-	chnum, sPtr = GetUInt32(BytesReceived, sPtr)
-	if debug {
-		fmt.Fprintf(os.Stderr, "Challenge number: %d\n", chnum)
-	}
+	// // Challenge number
+	// chnum, sPtr = GetUInt32(BytesReceived, sPtr)
+	// if debug {
+	// 	fmt.Fprintf(os.Stderr, "Challenge number: %d\n", chnum)
+	// }
 
-	a2sPlayer[5] = byte(chnum)
-	a2sPlayer[6] = byte(chnum >> 8)
-	a2sPlayer[7] = byte(chnum >> 16)
-	a2sPlayer[8] = byte(chnum >> 24)
+	// a2sPlayer[5] = byte(chnum)
+	// a2sPlayer[6] = byte(chnum >> 8)
+	// a2sPlayer[7] = byte(chnum >> 16)
+	// a2sPlayer[8] = byte(chnum >> 24)
 
-	if debug {
-		fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
-	}
-	n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
+	// if debug {
+	// 	fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
+	// }
+	// n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
 
-	if BytesReceived == nil || n == 0 {
-		fmt.Fprintln(os.Stderr, "Received no data!")
-		os.Exit(2)
-	}
+	// if BytesReceived == nil || n == 0 {
+	// 	fmt.Fprintln(os.Stderr, "Received no data!")
+	// 	os.Exit(2)
+	// }
 
-	if !CheckHeader(BytesReceived[4], 0x44) {
-		os.Exit(2)
-	}
+	// if !CheckHeader(BytesReceived[4], 0x44) {
+	// 	os.Exit(2)
+	// }
 
-	sPtr = 5
-	players := BytesReceived[sPtr]
-	sPtr++
+	// sPtr = 5
+	// players := BytesReceived[sPtr]
+	// sPtr++
 
-	if players > 0 {
-		fmt.Println("PLAYER LIST:")
-	}
+	// if players > 0 {
+	// 	fmt.Println("PLAYER LIST:")
+	// }
 
-	var score uint32
+	// var score uint32
 
-	for i := 0; i < int(players); i++ {
-		// Index (this seems to always be 0, so skipping it)
-		sPtr++
+	// for i := 0; i < int(players); i++ {
+	// 	// Index (this seems to always be 0, so skipping it)
+	// 	sPtr++
 
-		// Name
-		info, sPtr = GetString(BytesReceived, sPtr)
+	// 	// Name
+	// 	info, sPtr = GetString(BytesReceived, sPtr)
 
-		// Score
-		score, sPtr = GetUInt32(BytesReceived, sPtr)
+	// 	// Score
+	// 	score, sPtr = GetUInt32(BytesReceived, sPtr)
 
-		// Duration
-		b := []byte{0x00, 0x00, 0x00, 0x00}
-		b[0] = BytesReceived[sPtr]
-		sPtr++
-		b[1] = BytesReceived[sPtr]
-		sPtr++
-		b[2] = BytesReceived[sPtr]
-		sPtr++
-		b[3] = BytesReceived[sPtr]
-		sPtr++
-		var duration float32
-		buf := bytes.NewReader(b)
-		err := binary.Read(buf, binary.LittleEndian, &duration)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Float conversion failed:", err)
-		}
+	// 	// Duration
+	// 	b := []byte{0x00, 0x00, 0x00, 0x00}
+	// 	b[0] = BytesReceived[sPtr]
+	// 	sPtr++
+	// 	b[1] = BytesReceived[sPtr]
+	// 	sPtr++
+	// 	b[2] = BytesReceived[sPtr]
+	// 	sPtr++
+	// 	b[3] = BytesReceived[sPtr]
+	// 	sPtr++
+	// 	var duration float32
+	// 	buf := bytes.NewReader(b)
+	// 	err := binary.Read(buf, binary.LittleEndian, &duration)
+	// 	if err != nil {
+	// 		fmt.Fprintln(os.Stderr, "Float conversion failed:", err)
+	// 	}
 
-		fmt.Printf("%s %d %.0f\n", info, score, duration)
-	}
+	// 	fmt.Printf("%s %d %.0f\n", info, score, duration)
+	// }
 	// r, err := rcon.Dial(server+":27025", "changeme")
 	// r.Write()
 	os.Exit(0)

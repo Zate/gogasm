@@ -23,3 +23,23 @@ type config struct {
 	// Duration     time.Duration `env:"DURATION"`
 	// TempFolder   string        `env:"TEMP_FOLDER" envDefault:"${HOME}/tmp" envExpand:"true"`
 }
+
+type serverInfo struct {
+	Name        string // NAME: Atlas_D6 - (v16.14)
+	Map         string // MAP: Ocean
+	Folder      string // FOLDER: atlas
+	Game        string // GAME: ATLAS
+	ID          uint16 // ID: 0
+	Players     byte   // PLAYERS: 26
+	MaxPlayers  byte   // MAXPLAYERS: 150
+	Bot         byte   // BOTS: 0
+	ServerType  byte   // SERVERTYPE: d
+	Environment byte   // ENVIRONMENT: w
+	Visibility  byte   // VISIBILITY: 0
+	Vac         byte   // VAC: 1
+	Version     string // VERSION: 1.0.0.0
+	Port        uint16 // PORT: 5759
+	KeyWords    string // KEYWORDS: @,OWNINGID:90122942757731332,OWNINGNAME:90122942757731332,NUMOPENPUBCONN:124,P2PADDR:90122942757731332,P2PPORT:5759,NONATLAS_i:0
+	Ping        int    // PING: 96
+
+}
