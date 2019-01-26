@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -138,16 +139,17 @@ func CheckHeader(hdr byte, chk byte) bool {
 }
 
 // CheckStatus sends a Server Query Protocol request and prses the response
-func CheckStatus(Cfg config) {
+func CheckStatus(cfg config) {
 	sinfo := serverInfo{}
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
 	//a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
-	server := Cfg.AtlasIP
-	port := Cfg.AtlasQueryPort
-	seconds := 15
+	server := cfg.AtlasIP
+	port := cfg.AtlasQueryPort
+	seconds := 3
 	timeout := time.Duration(seconds) * time.Second
-
+	sp := server + ":" + port
+	log.Printf("Debug: %s\n", strings.TrimSpace(sp))
 	if debug {
 		fmt.Fprintln(os.Stderr, "Opening UDP connection...")
 	}
@@ -339,7 +341,10 @@ func CheckStatus(Cfg config) {
 	// ISHOMESERVER_b
 	// SESSIONFLAGS string
 	// SESSIONISPVE_i 1
-	log.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
+	if rulesMap["CUSTOMSERVERNAME_s"] == "golden age ruins" {
+		log.Printf("%s | %s | %d | %d \n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping)
+	}
+	// log.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
 
 	// // Get Players
 	// sPtr = 5
@@ -428,7 +433,7 @@ func CheckStatus(Cfg config) {
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+	//log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 	Cfg := config{}
 	err := env.Parse(&Cfg)
 
@@ -443,10 +448,12 @@ func main() {
 
 	if *statusPtr == true {
 		if len(*serverPtr) > 0 {
-			Cfg.AtlasIP = *serverPtr
+			Cfg.AtlasIP = strings.TrimSpace(*serverPtr)
+			//log.Print(Cfg.AtlasIP)
 		}
 		if len(*portPtr) > 0 {
-			Cfg.AtlasQueryPort = *portPtr
+			Cfg.AtlasQueryPort = strings.TrimSpace(*portPtr)
+			//log.Print(Cfg.AtlasQueryPort)
 		}
 		// fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
 		// fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
