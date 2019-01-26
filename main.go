@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"time"
@@ -18,7 +19,7 @@ var colorize = false
 // CheckNoError standard error checking function
 func CheckNoError(err error) bool {
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Println("Error: ", err)
 		return false
 	}
 	return true
@@ -130,7 +131,7 @@ func GetUInt32(arr []byte, index int) (uint32, int) {
 // CheckHeader to see if it's the right byte fotmat
 func CheckHeader(hdr byte, chk byte) bool {
 	if hdr != chk {
-		fmt.Fprintf(os.Stderr, "Header was 0x%x instead of 0x%x\n", hdr, chk)
+		log.Printf("Header was 0x%x instead of 0x%x\n", hdr, chk)
 		return false
 	}
 	return true
@@ -169,7 +170,7 @@ func CheckStatus(Cfg config) {
 	elapsed1 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		fmt.Fprintln(os.Stderr, "Received no data!")
+		log.Println("Received no data!")
 		return
 	}
 
@@ -262,7 +263,7 @@ func CheckStatus(Cfg config) {
 	sPtr = 5
 
 	if debug {
-		fmt.Fprintln(os.Stderr, "Sending A2S_RULES...")
+		log.Println("Sending A2S_RULES...")
 	}
 
 	start = time.Now()
@@ -271,19 +272,19 @@ func CheckStatus(Cfg config) {
 	elapsed2 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		fmt.Fprintln(os.Stderr, "Received no data!")
+		log.Println("Received no data!")
 		return
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x41) {
-		os.Exit(2)
+		return
 	}
 
 	// Challenge number
 	var chnum uint32
 	chnum, sPtr = GetUInt32(BytesReceived, sPtr)
 	if debug {
-		fmt.Fprintf(os.Stderr, "Challenge number: %d\n", chnum)
+		log.Printf("Challenge number: %d\n", chnum)
 	}
 
 	a2sRules[5] = byte(chnum)
@@ -292,7 +293,7 @@ func CheckStatus(Cfg config) {
 	a2sRules[8] = byte(chnum >> 24)
 
 	if debug {
-		fmt.Fprintln(os.Stderr, "Sending A2S_RULES...")
+		log.Println("Sending A2S_RULES...")
 	}
 
 	start = time.Now()
@@ -301,7 +302,7 @@ func CheckStatus(Cfg config) {
 	elapsed3 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		fmt.Fprintln(os.Stderr, "Received no data!")
+		log.Println("Received no data!")
 		return
 	}
 
@@ -338,7 +339,7 @@ func CheckStatus(Cfg config) {
 	// ISHOMESERVER_b
 	// SESSIONFLAGS string
 	// SESSIONISPVE_i 1
-	fmt.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
+	log.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
 
 	// // Get Players
 	// sPtr = 5
@@ -427,7 +428,7 @@ func CheckStatus(Cfg config) {
 }
 
 func main() {
-
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 	Cfg := config{}
 	err := env.Parse(&Cfg)
 
