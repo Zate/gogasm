@@ -152,7 +152,7 @@ func CheckStatus(Cfg config) {
 	}
 	Conn, err := net.DialTimeout("udp", server+":"+port, timeout)
 	if !CheckNoError(err) {
-		os.Exit(2)
+		return
 	}
 
 	defer Conn.Close()
@@ -170,11 +170,11 @@ func CheckStatus(Cfg config) {
 
 	if BytesReceived == nil || n == 0 {
 		fmt.Fprintln(os.Stderr, "Received no data!")
-		os.Exit(2)
+		return
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x49) {
-		os.Exit(2)
+		return
 	}
 
 	if debug {
@@ -272,7 +272,7 @@ func CheckStatus(Cfg config) {
 
 	if BytesReceived == nil || n == 0 {
 		fmt.Fprintln(os.Stderr, "Received no data!")
-		os.Exit(2)
+		return
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x41) {
@@ -302,7 +302,7 @@ func CheckStatus(Cfg config) {
 
 	if BytesReceived == nil || n == 0 {
 		fmt.Fprintln(os.Stderr, "Received no data!")
-		os.Exit(2)
+		return
 	}
 
 	elapsed := (elapsed1 + elapsed2 + elapsed3) / 3
@@ -310,7 +310,7 @@ func CheckStatus(Cfg config) {
 	//fmt.Printf("PING: %d\n", int(elapsed)/1000000)
 
 	if !CheckHeader(BytesReceived[4], 0x45) {
-		os.Exit(2)
+		return
 	}
 
 	// reset sPtr
@@ -423,7 +423,7 @@ func CheckStatus(Cfg config) {
 	// }
 	// r, err := rcon.Dial(server+":27025", "changeme")
 	// r.Write()
-	os.Exit(0)
+	return
 }
 
 func main() {
