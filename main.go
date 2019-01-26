@@ -338,7 +338,7 @@ func CheckStatus(Cfg config) {
 	// ISHOMESERVER_b
 	// SESSIONFLAGS string
 	// SESSIONISPVE_i 1
-	fmt.Printf("%s | %s | %d | %d | %s | %s | %s", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
+	fmt.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
 
 	// // Get Players
 	// sPtr = 5
@@ -447,8 +447,8 @@ func main() {
 		if len(*portPtr) > 0 {
 			Cfg.AtlasQueryPort = *portPtr
 		}
-		fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
-		fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
+		// fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
+		// fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
 		CheckStatus(Cfg)
 	}
 	// argsWithProg := os.Args
