@@ -2,54 +2,7 @@
 
 Automated server management for game servers.
 
-Initial Support for Atlas, others to come later, I hope.
+Well that is what it might end up as one day, right now simply running ./gogasm
+will query the live servers and display their pop.
 
-
-NAME: Atlas_D6 - (v16.14)
-MAP: Ocean
-FOLDER: atlas
-GAME: ATLAS
-ID: 0
-PLAYERS: 26
-MAXPLAYERS: 150
-BOTS: 0
-SERVERTYPE: d
-ENVIRONMENT: w
-VISIBILITY: 0
-VAC: 1
-VERSION: 1.0.0.0
-PORT: 5759
-KEYWORDS: @,OWNINGID:90122942757731332,OWNINGNAME:90122942757731332,NUMOPENPUBCONN:124,P2PADDR:90122942757731332,P2PPORT:5759,NONATLAS_i:0
-PING: 96
-RULE LIST:
-ALLOWDOWNLOADCHARS_i 1
-ALLOWDOWNLOADITEMS_i 1
-ATLASFRIENDLYNAME_s [NA PVE] The Hydra's Den
-AtlasId_s 1202965888
-ATLASMAXX_i 14
-ATLASMAXY_i 14
-ATLASMINX_i 0
-ATLASMINY_i 0
-AWSServerId_s 196613
-CUSTOMSERVERNAME_s atlas_d6
-DayTime_s 978
-GameMode_s TestGameMode_C
-ISHOMESERVER_b false
-LEGACY_i 0
-MATCHTIMEOUT_f 120.000000
-ModId_l 0
-Networking_i 0
-NONATLAS_i 0
-NUMOPENPUBCONN 124
-NumReservedSlots_i 50
-OFFICIALSERVER_i 1
-OWNINGID 90122942757731332
-OWNINGNAME 90122942757731332
-P2PADDR 90122942757731332
-P2PPORT 5759
-SEARCHKEYWORDS_s Custom
-ServerPassword_b false
-SERVERUSESBATTLEYE_b true
-SESSIONFLAGS 683
-SESSIONISPVE_i 1
-WORLDMAPIMAGEURL_s https://cdn.atlasdedicated.com/atlaspreview1.jpg
+Next up is a web interface to display all the info it grabs with A2S_Rules and A2S_Info
