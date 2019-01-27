@@ -1,6 +1,21 @@
 package main
 
-// AtlasServers struct contains all the knowledge about unofficial and official servers
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// PrettyPrint .. well it prints things pretty see..
+func PrettyPrint(v interface{}) (err error) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err == nil {
+		fmt.Println(string(b))
+	}
+	return
+}
+
+// AtlasServers struct contains all the knowledge about unofficial and official
+// servers
 type AtlasServers struct {
 	Official   []Realm `json:"official"`
 	Unofficial []Realm `json:"unofficial"`
@@ -12,14 +27,16 @@ type Realm struct {
 	Grids     []Grids `json:"grids"`
 }
 
-// Grids is a struct for a grid server (such as A1) containing the QueryInfo and Config structs
+// Grids is a struct for a grid server (such as A1) containing the QueryInfo and
+// Config structs
 type Grids struct {
 	Grid   string `json:"Grid"`
 	Info   `json:"info"`
 	Config `json:"config"`
 }
 
-// Config struct contains all the information we will need to interact with a server/grid
+// Config struct contains all the information we will need to interact with a
+// server/grid
 type Config struct {
 	AtlasIP string `env:"ATLASIP" envDefault:"159.203.52.169"` // ATLASIP=159.203.52.169
 	//AtlasMaxPlayers		int			`env:"ATLASMAXPLAYERS" envDefault:"10"` // MAXPLAYERS=10
@@ -44,7 +61,8 @@ type Config struct {
 	// TempFolder   string        `env:"TEMP_FOLDER" envDefault:"${HOME}/tmp" envExpand:"true"`
 }
 
-// Info contains all the information returned from a QueryServer request to an Atlas Server
+// Info contains all the information returned from a QueryServer request to an
+// Atlas Server
 type Info struct {
 	Name        string // NAME: Atlas_D6 - (v16.14)
 	Map         string // MAP: Ocean

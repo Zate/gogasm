@@ -1,17 +1,12 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/hex"
-	"flag"
-	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
-	"strings"
 	"time"
-
-	"github.com/caarlos0/env"
 	// "github.com/zate/gogasm/rcon"
 )
 
@@ -46,35 +41,21 @@ func MyHexDump(arr []byte, s int) string {
 
 // SendPacket sends a packet,duh.
 func SendPacket(conn net.Conn, arr []byte, timeout time.Duration) (int, []byte) {
-	if debug {
-		fmt.Fprintln(os.Stderr, "Writing...")
-	}
-	ret, err := conn.Write(arr)
-	if debug {
-		fmt.Fprintf(os.Stderr, MyHexDump(arr, ret))
-	}
-	if CheckNoError(err) {
-		if debug {
-			fmt.Fprintf(os.Stderr, "Wrote %d bytes\n", ret)
-		}
-		buffer := make([]byte, 1500)
-		if debug {
-			fmt.Fprintln(os.Stderr, "Reading...")
-		}
-		conn.SetReadDeadline(time.Now().Add(timeout))
-		n, err := conn.Read(buffer)
-		if CheckNoError(err) {
-			if debug {
-				fmt.Fprintf(os.Stderr, "Read %d bytes\n", n)
-			}
-			if debug {
-				fmt.Fprintf(os.Stderr, MyHexDump(buffer, n))
-			}
-			return n, buffer
-		}
+	_, err := conn.Write(arr)
+	if err != nil {
 		return 0, nil
 	}
-	return 0, nil
+	buffer := make([]byte, 1500)
+	conn.SetReadDeadline(time.Now().Add(timeout))
+	n, err := conn.Read(buffer)
+	if n == 0 || err != nil {
+		conn.SetReadDeadline(time.Now().Add(timeout))
+		n, err = conn.Read(buffer)
+	}
+	if n == 0 || err != nil {
+		return 0, nil
+	}
+	return n, buffer
 }
 
 func stripCtlAndExtFromBytes(str string) string {
@@ -139,145 +120,103 @@ func CheckHeader(hdr byte, chk byte) bool {
 	return true
 }
 
-// ServerPing sends a Query Protocol Ping packet to the server and looks at response
-func ServerPing(cfg Config) {
+// ServerPing sends a Query Protocol Ping packet to the server and looks at
+// the response and returns a bool of alive or not
+func ServerPing(server, port string) (alive bool) {
 	a2sPing := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
-	server := cfg.AtlasIP
-	port := cfg.AtlasQueryPort
 	timeout := 1500 * time.Millisecond
 	sp := server + ":" + port
 
-	//log.Printf("Pinging : %s", sp)
-
 	conn, err := net.DialTimeout("udp", sp, timeout)
 	if err != nil {
-		return
+		return false
 	}
 
 	defer conn.Close()
 
 	ret, err := conn.Write(a2sPing)
 	if ret == 0 || err != nil {
-		//log.Printf("%s is dead\n", sp)
-		return
+		// Need to handle this better one day
+		return false
 	}
 	BytesReceived := make([]byte, 1500)
 	conn.SetReadDeadline(time.Now().Add(timeout))
 	n, err := conn.Read(BytesReceived)
 
 	if BytesReceived == nil || n == 0 {
-		//log.Printf("%s is dead\n", sp)
-		return
+		// Need to handle this better one day
+		return false
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x41) {
-		//log.Printf("%s is dead\n", sp)
-		return
+		// Need to handle this better one day
+		return false
 	}
-
-	//log.Printf("%s is alive\n", sp)
-	CheckStatus(cfg)
+	return true
 }
 
 // CheckStatus sends a Server Query Protocol request and prses the response
-func CheckStatus(cfg Config) {
-	sinfo := Info{}
+func CheckStatus(g Grids) Info {
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
-
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
 	//a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
-	server := cfg.AtlasIP
-	port := cfg.AtlasQueryPort
 	seconds := 3
 	timeout := time.Duration(seconds) * time.Second
-	sp := server + ":" + port
-	//log.Printf("Debug: %s\n", strings.TrimSpace(sp))
-	if debug {
-		fmt.Fprintln(os.Stderr, "Opening UDP connection...")
-	}
+	sp := g.Config.AtlasIP + ":" + g.Config.AtlasQueryPort
+
 	Conn, err := net.DialTimeout("udp", sp, timeout)
 	if err != nil {
-		return
+		return g.Info
 	}
 
 	defer Conn.Close()
 
 	// Get Info
-
-	if debug {
-		fmt.Fprintln(os.Stderr, "Sending A2S_INFO...")
-	}
-
 	start := time.Now()
 	n, BytesReceived := SendPacket(Conn, a2sInfo, timeout)
 	t := time.Now()
 	elapsed1 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		log.Println("Received no data!")
-		return
+		start = time.Now()
+		n, BytesReceived = SendPacket(Conn, a2sInfo, timeout)
+		t = time.Now()
+		elapsed1 = t.Sub(start)
+	}
+
+	if BytesReceived == nil || n == 0 {
+		log.Printf("%v Received no data! for A2S_INFO", g.Grid)
+		return g.Info
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x49) {
-		return
-	}
-
-	if debug {
-		fmt.Fprintf(os.Stderr, "HEADER: 0x%x\n", BytesReceived[4])
-	}
-	if debug {
-		fmt.Fprintf(os.Stderr, "PROTOCOL: 0x%x\n", BytesReceived[5])
+		log.Printf("%v Got wrong header response for A2S_INFO", g.Grid)
+		return g.Info
 	}
 
 	var sPtr int
 	var info string
 	sPtr = 5
-	sinfo.Name, sPtr = GetString(BytesReceived, sPtr)
-	// fmt.Printf("NAME: %s\n", sinfo.Name)
-
-	sinfo.Map, sPtr = GetString(BytesReceived, sPtr)
-	// fmt.Printf("MAP: %s\n", sinfo.Map)
-
-	sinfo.Folder, sPtr = GetString(BytesReceived, sPtr)
-	// fmt.Printf("FOLDER: %s\n", sinfo.Folder)
-
-	sinfo.Game, sPtr = GetString(BytesReceived, sPtr)
-	// fmt.Printf("GAME: %s\n", info)
-
-	//var id uint16
-	sinfo.ID, sPtr = GetUInt16(BytesReceived, sPtr)
-	//fmt.Printf("ID: %d\n", id)
-
-	sinfo.Players = BytesReceived[sPtr]
-	//fmt.Printf("PLAYERS: %d\n", BytesReceived[sPtr])
+	g.Info.Name, sPtr = GetString(BytesReceived, sPtr)
+	g.Info.Map, sPtr = GetString(BytesReceived, sPtr)
+	g.Info.Folder, sPtr = GetString(BytesReceived, sPtr)
+	g.Info.Game, sPtr = GetString(BytesReceived, sPtr)
+	g.Info.ID, sPtr = GetUInt16(BytesReceived, sPtr)
+	g.Info.Players = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.MaxPlayers = BytesReceived[sPtr]
-	//fmt.Printf("MAXPLAYERS: %d\n", BytesReceived[sPtr])
+	g.Info.MaxPlayers = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.Bot = BytesReceived[sPtr]
-	//fmt.Printf("BOTS: %d\n", BytesReceived[sPtr])
+	g.Info.Bot = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.ServerType = BytesReceived[sPtr]
-	//fmt.Printf("SERVERTYPE: %c\n", BytesReceived[sPtr])
+	g.Info.ServerType = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.Environment = BytesReceived[sPtr]
-	//fmt.Printf("ENVIRONMENT: %c\n", BytesReceived[sPtr])
+	g.Info.Environment = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.Visibility = BytesReceived[sPtr]
-	//fmt.Printf("VISIBILITY: %d\n", BytesReceived[sPtr])
+	g.Info.Visibility = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.Vac = BytesReceived[sPtr]
-	//fmt.Printf("VAC: %d\n", BytesReceived[sPtr])
+	g.Info.Vac = BytesReceived[sPtr]
 	sPtr++
-
-	sinfo.Version, sPtr = GetString(BytesReceived, sPtr)
-	//fmt.Printf("VERSION: %s\n", info)
+	g.Info.Version, sPtr = GetString(BytesReceived, sPtr)
 
 	if n > sPtr {
 		// EDF
@@ -287,8 +226,7 @@ func CheckStatus(cfg Config) {
 		// PORT
 		if edf&0x80 != 0 {
 			//var port uint16
-			sinfo.Port, _ = GetUInt16(BytesReceived, sPtr)
-			//fmt.Printf("PORT: %d\n", port)
+			g.Info.Port, _ = GetUInt16(BytesReceived, sPtr)
 		}
 
 		// STEAMID
@@ -298,17 +236,11 @@ func CheckStatus(cfg Config) {
 
 		// Keywords
 		if edf&0x20 != 0 {
-			sinfo.KeyWords, sPtr = GetString(BytesReceived, sPtr)
-			//fmt.Printf("KEYWORDS: %s\n", info)
+			g.Info.KeyWords, sPtr = GetString(BytesReceived, sPtr)
 		}
 	}
-
 	// Get Rules
 	sPtr = 5
-
-	if debug {
-		log.Println("Sending A2S_RULES...")
-	}
 
 	start = time.Now()
 	n, BytesReceived = SendPacket(Conn, a2sRules, timeout)
@@ -316,29 +248,29 @@ func CheckStatus(cfg Config) {
 	elapsed2 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		log.Printf("Received no data! for %s A2S_RULES", sp)
-		return
+		start = time.Now()
+		n, BytesReceived = SendPacket(Conn, a2sRules, timeout)
+		t = time.Now()
+		elapsed2 = t.Sub(start)
+	}
+	if BytesReceived == nil || n == 0 {
+		log.Printf("%v Received no data! for A2S_RULES - Pre Challenge", g.Grid)
+		return g.Info
 	}
 
 	if !CheckHeader(BytesReceived[4], 0x41) {
-		return
+		log.Printf("%v Got wrong header response for A2S_RULES", g.Grid)
+		return g.Info
 	}
 
 	// Challenge number
 	var chnum uint32
 	chnum, sPtr = GetUInt32(BytesReceived, sPtr)
-	if debug {
-		log.Printf("Challenge number: %d\n", chnum)
-	}
 
 	a2sRules[5] = byte(chnum)
 	a2sRules[6] = byte(chnum >> 8)
 	a2sRules[7] = byte(chnum >> 16)
 	a2sRules[8] = byte(chnum >> 24)
-
-	if debug {
-		log.Println("Sending A2S_RULES...")
-	}
 
 	start = time.Now()
 	n, BytesReceived = SendPacket(Conn, a2sRules, timeout)
@@ -346,16 +278,14 @@ func CheckStatus(cfg Config) {
 	elapsed3 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		log.Println("Received no data!")
-		return
+		log.Printf("%v Received no data! for A2S_RULES Post Challenge", g.Grid)
+		return g.Info
 	}
 
 	elapsed := (elapsed1 + elapsed2 + elapsed3) / 3
-	sinfo.Ping = int(elapsed) / 1000000
-	//fmt.Printf("PING: %d\n", int(elapsed)/1000000)
-
+	g.Info.Ping = int(elapsed) / 1000000
 	if !CheckHeader(BytesReceived[4], 0x45) {
-		return
+		return g.Info
 	}
 
 	// reset sPtr
@@ -364,7 +294,6 @@ func CheckStatus(cfg Config) {
 	rules, sPtr = GetUInt16(BytesReceived, sPtr)
 	rulesMap := make(map[string]string)
 	if rules > 0 {
-		//fmt.Println("RULE LIST:")
 	}
 
 	for i := uint16(0); i < rules; i++ {
@@ -374,133 +303,26 @@ func CheckStatus(cfg Config) {
 		val := ""
 		val, sPtr = GetString(BytesReceived, sPtr)
 		rulesMap[info] = val
-		//fmt.Printf("%s %s\n", info, val)
 	}
-	// ATLASFRIENDLYNAME_s
-	// PLAYERS: 26
-	// PING: 96
-	// CUSTOMSERVERNAME_s
-	// ISHOMESERVER_b
-	// SESSIONFLAGS string
-	// SESSIONISPVE_i 1
-	//if rulesMap["CUSTOMSERVERNAME_s"] == "golden age ruins" {
-	log.Printf("%s : %s | %s | %d | %d \n", sp, rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping)
-	//}
-	// log.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
-
-	// // Get Players
-	// sPtr = 5
-
-	// if debug {
-	// 	fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
-	// }
-	// n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
-
-	// if BytesReceived == nil || n == 0 {
-	// 	fmt.Fprintln(os.Stderr, "Received no data!")
-	// 	os.Exit(2)
-	// }
-
-	// if !CheckHeader(BytesReceived[4], 0x41) {
-	// 	os.Exit(2)
-	// }
-
-	// // Challenge number
-	// chnum, sPtr = GetUInt32(BytesReceived, sPtr)
-	// if debug {
-	// 	fmt.Fprintf(os.Stderr, "Challenge number: %d\n", chnum)
-	// }
-
-	// a2sPlayer[5] = byte(chnum)
-	// a2sPlayer[6] = byte(chnum >> 8)
-	// a2sPlayer[7] = byte(chnum >> 16)
-	// a2sPlayer[8] = byte(chnum >> 24)
-
-	// if debug {
-	// 	fmt.Fprintln(os.Stderr, "Sending A2S_PLAYER...")
-	// }
-	// n, BytesReceived = SendPacket(Conn, a2sPlayer, timeout)
-
-	// if BytesReceived == nil || n == 0 {
-	// 	fmt.Fprintln(os.Stderr, "Received no data!")
-	// 	os.Exit(2)
-	// }
-
-	// if !CheckHeader(BytesReceived[4], 0x44) {
-	// 	os.Exit(2)
-	// }
-
-	// sPtr = 5
-	// players := BytesReceived[sPtr]
-	// sPtr++
-
-	// if players > 0 {
-	// 	fmt.Println("PLAYER LIST:")
-	// }
-
-	// var score uint32
-
-	// for i := 0; i < int(players); i++ {
-	// 	// Index (this seems to always be 0, so skipping it)
-	// 	sPtr++
-
-	// 	// Name
-	// 	info, sPtr = GetString(BytesReceived, sPtr)
-
-	// 	// Score
-	// 	score, sPtr = GetUInt32(BytesReceived, sPtr)
-
-	// 	// Duration
-	// 	b := []byte{0x00, 0x00, 0x00, 0x00}
-	// 	b[0] = BytesReceived[sPtr]
-	// 	sPtr++
-	// 	b[1] = BytesReceived[sPtr]
-	// 	sPtr++
-	// 	b[2] = BytesReceived[sPtr]
-	// 	sPtr++
-	// 	b[3] = BytesReceived[sPtr]
-	// 	sPtr++
-	// 	var duration float32
-	// 	buf := bytes.NewReader(b)
-	// 	err := binary.Read(buf, binary.LittleEndian, &duration)
-	// 	if err != nil {
-	// 		fmt.Fprintln(os.Stderr, "Float conversion failed:", err)
-	// 	}
-
-	// 	fmt.Printf("%s %d %.0f\n", info, score, duration)
-	// }
-	// r, err := rcon.Dial(server+":27025", "changeme")
-	// r.Write()
-	return
+	return g.Info
 }
 
 func toGrid(s, gs int) (grid string) {
 	g := (s % gs) + 1
 	l := (s / gs)
 	letter := string('A' + l)
-	//log.Printf("count: %v is %v%v", count, letter, g)
 	grid = letter + strconv.Itoa(g)
 	return grid
 }
 
 // Grid attempts to map official server space for each port/ip combo
 func makeGrid(gridSize, portsPerServer int) {
-	//var coord string
-
 	count := 0
-
 	portCount := 1
-
 	for i := 0; i < (gridSize*gridSize)+1; i++ {
-
-		// g := (count % gridSize) + 1
-		// l := (count / gridSize) + 1
-		// letter = string('A' - 1 + l)
 		ipcount := (count / portsPerServer)
 		portNum := 57554 + portCount
-
 		log.Printf("count: %v is %v and ip: %v port: %v", count, toGrid(count, gridSize), ipcount, portNum)
-
 		portCount++
 		portCount++
 		if portCount == 9 {
@@ -512,7 +334,8 @@ func makeGrid(gridSize, portsPerServer int) {
 
 }
 
-// AddOfficialRealm takes a []Realm struct and adds it to the base AtlasServers struct
+// AddOfficialRealm takes a []Realm struct and adds it to the base AtlasServers
+// struct
 func (l *AtlasServers) AddOfficialRealm(realm Realm) []Realm {
 	l.Official = append(l.Official, realm)
 	return l.Official
@@ -524,15 +347,35 @@ func (r *Realm) AddGrid(grid Grids) []Grids {
 	return r.Grids
 }
 
-// LiveAtlasServers will build a list of all the live servers in the grid for the realm specified
-func LiveAtlasServers(realm string) {
-	var l AtlasServers
-	// thisrealm := make(Official, 1)
-	// live.Official[0].Clustername = realm
-	var r Realm
-	// realmMap := make(map[realm]server{})
+// incIP increments the base IP by int and returns a string
+func incIP(ip string, i int) string {
+	ui := uint32(i)
+	s := int2ip(ip2int(net.ParseIP(ip)) + ui)
 
-	log.Printf("Running on %v", realm)
+	//log.Println(s.String())
+	return s.String()
+}
+
+func ip2int(ip net.IP) uint32 {
+	if len(ip) == 16 {
+		return binary.BigEndian.Uint32(ip[12:16])
+	}
+	return binary.BigEndian.Uint32(ip)
+}
+
+func int2ip(nn uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, nn)
+	return ip
+}
+
+// LiveAtlasServers will build a list of all the live servers in the grid for
+// the realm specified
+func LiveAtlasServers(realm string) {
+	b := InitOfficialBaseIPs(realm)
+	//log.Println(b)
+	var l AtlasServers
+	var r Realm
 	r.RealmName = realm
 	gridSize := 15
 	portsPerServer := 4
@@ -540,86 +383,64 @@ func LiveAtlasServers(realm string) {
 
 	for i := 0; i < (gridSize * gridSize); i++ {
 		var g Grids
-		// g := (count % gridSize) + 1
-		// l := (count / gridSize) + 1
-		// letter = string('A' - 1 + l)
 		ipcount := (i / portsPerServer)
 		portNum := 57554 + portCount
 		grid := toGrid(i, gridSize)
-		log.Printf("count: %v is %v and ip: %v port: %v", i, grid, ipcount, portNum)
+		//log.Printf("count: %v is %v and ip: %v port: %v", i, grid, ipcount, portNum)
 		g.Grid = grid
+		g.Config.AtlasIP = incIP(b, ipcount)
 		g.Config.AtlasQueryPort = strconv.Itoa(portNum)
 		portCount++
 		portCount++
 		if portCount == 9 {
 			portCount = 1
 		}
+		// Need to calculate what the ip should be based off a base IP, 4
+		// servers per IP.  lets try and use ipcount to count from what the base
+		// server for this realm is.  likely to break if they change subnets,
+		// but unfuck that when we get to it Also not going to convert it to a
+		// net.ip or anything just yet.  This means we could easily break things
+		// by say incrementing beyond a subnet boundary, but lets get it working
+		// right first.
+
 		r.AddGrid(g)
 	}
 	l.AddOfficialRealm(r)
-	log.Printf("Live: %v", l)
+	//PrettyPrint(l)
+
+	for _, v := range l.Official {
+		if v.RealmName == realm {
+			//PrettyPrint(v)
+			for _, g := range v.Grids {
+				// up := ServerPing(g.Config.AtlasIP, g.Config.AtlasQueryPort)
+				// if up == true {
+				g.Info = CheckStatus(g)
+				//PrettyPrint(g.Info)
+				// }
+				log.Printf("%v | %v | %v:%v Pop: %v", g.Grid, g.Info.Name, g.Config.AtlasIP, g.Config.AtlasQueryPort, g.Info.Players)
+			}
+		}
+	}
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
-	cfg := Config{}
-	err := env.Parse(&cfg)
+	// statusPtr := flag.Bool("status", false, "Check the status of the server")
+	// serverPtr := flag.String("s", "", "IP Address of the server to connect to")
+	// portPtr := flag.String("p", "", "Port on the server to connect to")
+	// pingPtr := flag.Bool("ping", false, "Simply checks if server responds to query on that port")
+	// gridPtr := flag.Bool("grid", false, "used to print out possible grid assignments based on 4 ports per IP, consecutive IP's")
+	// livePtr := flag.String("live", "", "to run status/ping on live servers")
+	// flag.Parse()
 
-	if CheckNoError(err) == false {
-		os.Exit(1)
-	}
-
-	statusPtr := flag.Bool("status", false, "Check the status of the server")
-	serverPtr := flag.String("s", "", "IP Address of the server to connect to")
-	portPtr := flag.String("p", "", "Port on the server to connect to")
-	pingPtr := flag.Bool("ping", false, "Simply checks if server responds to query on that port")
-	gridPtr := flag.Bool("grid", false, "used to print out possible grid assignments based on 4 ports per IP, consecutive IP's")
-	livePtr := flag.String("live", "", "to run status/ping on live servers")
-	flag.Parse()
-
-	if len(*livePtr) > 0 {
-		// Build out a grid of all the live servers
-		realm := *livePtr
-		LiveAtlasServers(realm)
-		os.Exit(0)
-	}
-
-	if *gridPtr == true {
-		makeGrid(15, 4)
-		os.Exit(0)
-	}
-
-	if len(*serverPtr) > 0 {
-		cfg.AtlasIP = strings.TrimSpace(*serverPtr)
-		//log.Print(Cfg.AtlasIP)
-	}
-	if len(*portPtr) > 0 {
-		cfg.AtlasQueryPort = strings.TrimSpace(*portPtr)
-		//log.Print(Cfg.AtlasQueryPort)
-	}
-
-	if *pingPtr == true {
-		ServerPing(cfg)
-	}
-
-	if *statusPtr == true {
-		// fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
-		// fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
-		CheckStatus(cfg)
-	}
-	// argsWithProg := os.Args
-	// if len(argsWithProg) < 3 {
-	// 	fmt.Printf("Usage: %s <server> <port> or set ATLASIP and ATLASQUERYPORT Environment Variables\n", filepath.Base(argsWithProg[0]))
-	// 	os.Exit(1)
+	// if len(*livePtr) > 0 {
+	// 	// Build out a grid of all the live servers
+	// 	realm := *livePtr
+	// 	go LiveAtlasServers(realm)
+	// 	// os.Exit(0)
 	// }
 
-	// server := argsWithProg[1]
-	// port := argsWithProg[2]
-	// if len(argsWithProg) > 3 {
-	// 	debug = true
-	// }
-	// if len(argsWithProg) > 4 {
-	// 	colorize = true
-	// }
+	LiveAtlasServers("napve")
+	//initWeb()
 
 }
