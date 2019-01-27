@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -138,10 +139,51 @@ func CheckHeader(hdr byte, chk byte) bool {
 	return true
 }
 
+// ServerPing sends a Query Protocol Ping packet to the server and looks at response
+func ServerPing(cfg Config) {
+	a2sPing := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
+	server := cfg.AtlasIP
+	port := cfg.AtlasQueryPort
+	timeout := 1500 * time.Millisecond
+	sp := server + ":" + port
+
+	//log.Printf("Pinging : %s", sp)
+
+	conn, err := net.DialTimeout("udp", sp, timeout)
+	if err != nil {
+		return
+	}
+
+	defer conn.Close()
+
+	ret, err := conn.Write(a2sPing)
+	if ret == 0 || err != nil {
+		//log.Printf("%s is dead\n", sp)
+		return
+	}
+	BytesReceived := make([]byte, 1500)
+	conn.SetReadDeadline(time.Now().Add(timeout))
+	n, err := conn.Read(BytesReceived)
+
+	if BytesReceived == nil || n == 0 {
+		//log.Printf("%s is dead\n", sp)
+		return
+	}
+
+	if !CheckHeader(BytesReceived[4], 0x41) {
+		//log.Printf("%s is dead\n", sp)
+		return
+	}
+
+	//log.Printf("%s is alive\n", sp)
+	CheckStatus(cfg)
+}
+
 // CheckStatus sends a Server Query Protocol request and prses the response
-func CheckStatus(cfg config) {
-	sinfo := serverInfo{}
+func CheckStatus(cfg Config) {
+	sinfo := Info{}
 	a2sInfo := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x00}
+
 	a2sRules := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x56, 0xFF, 0xFF, 0xFF, 0xFF}
 	//a2sPlayer := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x55, 0xFF, 0xFF, 0xFF, 0xFF}
 	server := cfg.AtlasIP
@@ -149,12 +191,12 @@ func CheckStatus(cfg config) {
 	seconds := 3
 	timeout := time.Duration(seconds) * time.Second
 	sp := server + ":" + port
-	log.Printf("Debug: %s\n", strings.TrimSpace(sp))
+	//log.Printf("Debug: %s\n", strings.TrimSpace(sp))
 	if debug {
 		fmt.Fprintln(os.Stderr, "Opening UDP connection...")
 	}
-	Conn, err := net.DialTimeout("udp", server+":"+port, timeout)
-	if !CheckNoError(err) {
+	Conn, err := net.DialTimeout("udp", sp, timeout)
+	if err != nil {
 		return
 	}
 
@@ -274,7 +316,7 @@ func CheckStatus(cfg config) {
 	elapsed2 := t.Sub(start)
 
 	if BytesReceived == nil || n == 0 {
-		log.Println("Received no data!")
+		log.Printf("Received no data! for %s A2S_RULES", sp)
 		return
 	}
 
@@ -341,9 +383,9 @@ func CheckStatus(cfg config) {
 	// ISHOMESERVER_b
 	// SESSIONFLAGS string
 	// SESSIONISPVE_i 1
-	if rulesMap["CUSTOMSERVERNAME_s"] == "golden age ruins" {
-		log.Printf("%s | %s | %d | %d \n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping)
-	}
+	//if rulesMap["CUSTOMSERVERNAME_s"] == "golden age ruins" {
+	log.Printf("%s : %s | %s | %d | %d \n", sp, rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping)
+	//}
 	// log.Printf("%s | %s | %d | %d | %s | %s | %s\n", rulesMap["ATLASFRIENDLYNAME_s"], rulesMap["CUSTOMSERVERNAME_s"], sinfo.Players, sinfo.Ping, rulesMap["ISHOMESERVER_b"], rulesMap["SESSIONFLAGS"], rulesMap["SESSIONISPVE_i"])
 
 	// // Get Players
@@ -432,10 +474,96 @@ func CheckStatus(cfg config) {
 	return
 }
 
+func toGrid(s, gs int) (grid string) {
+	g := (s % gs) + 1
+	l := (s / gs)
+	letter := string('A' + l)
+	//log.Printf("count: %v is %v%v", count, letter, g)
+	grid = letter + strconv.Itoa(g)
+	return grid
+}
+
+// Grid attempts to map official server space for each port/ip combo
+func makeGrid(gridSize, portsPerServer int) {
+	//var coord string
+
+	count := 0
+
+	portCount := 1
+
+	for i := 0; i < (gridSize*gridSize)+1; i++ {
+
+		// g := (count % gridSize) + 1
+		// l := (count / gridSize) + 1
+		// letter = string('A' - 1 + l)
+		ipcount := (count / portsPerServer)
+		portNum := 57554 + portCount
+
+		log.Printf("count: %v is %v and ip: %v port: %v", count, toGrid(count, gridSize), ipcount, portNum)
+
+		portCount++
+		portCount++
+		if portCount == 9 {
+			portCount = 1
+		}
+		count++
+	}
+	return
+
+}
+
+// AddOfficialRealm takes a []Realm struct and adds it to the base AtlasServers struct
+func (l *AtlasServers) AddOfficialRealm(realm Realm) []Realm {
+	l.Official = append(l.Official, realm)
+	return l.Official
+}
+
+// AddGrid takes a []Grids struct and adds it to the Realm struct
+func (r *Realm) AddGrid(grid Grids) []Grids {
+	r.Grids = append(r.Grids, grid)
+	return r.Grids
+}
+
+// LiveAtlasServers will build a list of all the live servers in the grid for the realm specified
+func LiveAtlasServers(realm string) {
+	var l AtlasServers
+	// thisrealm := make(Official, 1)
+	// live.Official[0].Clustername = realm
+	var r Realm
+	// realmMap := make(map[realm]server{})
+
+	log.Printf("Running on %v", realm)
+	r.RealmName = realm
+	gridSize := 15
+	portsPerServer := 4
+	portCount := 1
+
+	for i := 0; i < (gridSize * gridSize); i++ {
+		var g Grids
+		// g := (count % gridSize) + 1
+		// l := (count / gridSize) + 1
+		// letter = string('A' - 1 + l)
+		ipcount := (i / portsPerServer)
+		portNum := 57554 + portCount
+		grid := toGrid(i, gridSize)
+		log.Printf("count: %v is %v and ip: %v port: %v", i, grid, ipcount, portNum)
+		g.Grid = grid
+		g.Config.AtlasQueryPort = strconv.Itoa(portNum)
+		portCount++
+		portCount++
+		if portCount == 9 {
+			portCount = 1
+		}
+		r.AddGrid(g)
+	}
+	l.AddOfficialRealm(r)
+	log.Printf("Live: %v", l)
+}
+
 func main() {
-	//log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
-	Cfg := config{}
-	err := env.Parse(&Cfg)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+	cfg := Config{}
+	err := env.Parse(&cfg)
 
 	if CheckNoError(err) == false {
 		os.Exit(1)
@@ -444,20 +572,40 @@ func main() {
 	statusPtr := flag.Bool("status", false, "Check the status of the server")
 	serverPtr := flag.String("s", "", "IP Address of the server to connect to")
 	portPtr := flag.String("p", "", "Port on the server to connect to")
+	pingPtr := flag.Bool("ping", false, "Simply checks if server responds to query on that port")
+	gridPtr := flag.Bool("grid", false, "used to print out possible grid assignments based on 4 ports per IP, consecutive IP's")
+	livePtr := flag.String("live", "", "to run status/ping on live servers")
 	flag.Parse()
 
+	if len(*livePtr) > 0 {
+		// Build out a grid of all the live servers
+		realm := *livePtr
+		LiveAtlasServers(realm)
+		os.Exit(0)
+	}
+
+	if *gridPtr == true {
+		makeGrid(15, 4)
+		os.Exit(0)
+	}
+
+	if len(*serverPtr) > 0 {
+		cfg.AtlasIP = strings.TrimSpace(*serverPtr)
+		//log.Print(Cfg.AtlasIP)
+	}
+	if len(*portPtr) > 0 {
+		cfg.AtlasQueryPort = strings.TrimSpace(*portPtr)
+		//log.Print(Cfg.AtlasQueryPort)
+	}
+
+	if *pingPtr == true {
+		ServerPing(cfg)
+	}
+
 	if *statusPtr == true {
-		if len(*serverPtr) > 0 {
-			Cfg.AtlasIP = strings.TrimSpace(*serverPtr)
-			//log.Print(Cfg.AtlasIP)
-		}
-		if len(*portPtr) > 0 {
-			Cfg.AtlasQueryPort = strings.TrimSpace(*portPtr)
-			//log.Print(Cfg.AtlasQueryPort)
-		}
 		// fmt.Printf("Server IP: %v\n", Cfg.AtlasIP)
 		// fmt.Printf("Query Port: %v\n", Cfg.AtlasQueryPort)
-		CheckStatus(Cfg)
+		CheckStatus(cfg)
 	}
 	// argsWithProg := os.Args
 	// if len(argsWithProg) < 3 {
