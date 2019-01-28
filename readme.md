@@ -10,4 +10,5 @@ Next up is a web interface to display all the info it grabs with A2S_Rules and A
 # Docker
 
 docker build -t gogasm .
+
 docker run gogasm
