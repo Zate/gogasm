@@ -8,10 +8,10 @@ will query the live servers and display their pop.
 Next up is a web interface to display all the info it grabs with A2S_Rules and A2S_Info
 
 # Docker
-
-docker build -t gogasm . 
+```
+docker build -t gogasm .
 docker run gogasm
-
+```
 Output should look like:
 ```
 2019/01/28 11:00:31.265895 main.go:420: A1 | Atlas_A1 - (v16.21) | 37.10.126.130:57555 Pop: 2
