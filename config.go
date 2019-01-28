@@ -30,9 +30,16 @@ type Realm struct {
 // Grids is a struct for a grid server (such as A1) containing the QueryInfo and
 // Config structs
 type Grids struct {
-	Grid   string `json:"Grid"`
-	Info   `json:"info"`
-	Config `json:"config"`
+	Grid    string `json:"Grid"`
+	Info    `json:"info"`
+	Config  `json:"config"`
+	Players []Player
+}
+
+// Player object with steam name and time in zone
+type Player struct {
+	PlayerName string
+	PlayTime   string
 }
 
 // Config struct contains all the information we will need to interact with a
