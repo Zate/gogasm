@@ -4,6 +4,7 @@
 FROM golang:alpine AS build-env
 
 # install build tools
+# hadolint ignore=DL3018
 RUN apk add --no-cache tzdata bash wget curl git build-base openssl-dev \
     && mkdir -p $$GOPATH/bin
 
