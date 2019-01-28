@@ -11,11 +11,7 @@ import (
 	"os"
 	"strconv"
 	"time"
-	// "github.com/zate/gogasm/rcon"
 )
-
-var debug = true
-var colorize = true
 
 // CheckNoError standard error checking function
 func CheckNoError(err error) bool {
@@ -26,19 +22,11 @@ func CheckNoError(err error) bool {
 	return true
 }
 
-// Colorize wraps color around a string
-func Colorize(s string) string {
-	return "\033[1;31m" + s + "\033[0m"
-}
-
 // MyHexDump takes in array of bytes and and inter and returns a string
 func MyHexDump(arr []byte, s int) string {
 	var b = make([]byte, s)
 	for i := 0; i < s; i++ {
 		b[i] = arr[i]
-	}
-	if colorize {
-		return Colorize(hex.Dump(b))
 	}
 	return hex.Dump(b)
 }
@@ -115,7 +103,7 @@ func GetUInt32(arr []byte, index int) (uint32, int) {
 	return num, index
 }
 
-// CheckHeader to see if it's the right byte fotmat
+// CheckHeader to see if it's the right byte format
 func CheckHeader(hdr byte, chk byte) bool {
 	if hdr != chk {
 		log.Printf("Header was 0x%x instead of 0x%x\n", hdr, chk)
@@ -178,7 +166,6 @@ func CheckStatus(g Grids) (Grids, error) {
 	// Get Info
 	start := time.Now()
 	n, BytesReceived := SendPacket(Conn, a2sInfo, timeout)
-
 	t := time.Now()
 	elapsed1 := t.Sub(start)
 
@@ -301,15 +288,14 @@ func CheckStatus(g Grids) (Grids, error) {
 	rules, sPtr = GetUInt16(BytesReceived, sPtr)
 	rulesMap := make(map[string]string)
 	if rules > 0 {
-	}
-
-	for i := uint16(0); i < rules; i++ {
-		// Name
-		info, sPtr = GetString(BytesReceived, sPtr)
-		// Value
-		val := ""
-		val, sPtr = GetString(BytesReceived, sPtr)
-		rulesMap[info] = val
+		for i := uint16(0); i < rules; i++ {
+			// Name
+			info, sPtr = GetString(BytesReceived, sPtr)
+			// Value
+			val := ""
+			val, sPtr = GetString(BytesReceived, sPtr)
+			rulesMap[info] = val
+		}
 	}
 	// Get Players
 	sPtr = 5
@@ -356,7 +342,6 @@ func CheckStatus(g Grids) (Grids, error) {
 	sPtr++
 
 	if players > 0 {
-		//var score uint32
 		for i := 0; i < int(players); i++ {
 			// Index (this seems to always be 0, so skipping it)
 			sPtr++
@@ -392,6 +377,8 @@ func CheckStatus(g Grids) (Grids, error) {
 	return g, nil
 }
 
+// toGrid takes the current count/server number and the size of the grid
+// and determins what Letter/Number grid name represents that
 func toGrid(s, gs int) (grid string) {
 	g := (s % gs) + 1
 	l := (s / gs)
@@ -400,7 +387,7 @@ func toGrid(s, gs int) (grid string) {
 	return grid
 }
 
-// Grid attempts to map official server space for each port/ip combo
+// makeGrid attempts to map official server space for each port/ip combo
 func makeGrid(gridSize, portsPerServer int) {
 	count := 0
 	portCount := 1
@@ -442,8 +429,6 @@ func (g *Grids) AddPlayer(p Player) []Player {
 func incIP(ip string, i int) string {
 	ui := uint32(i)
 	s := int2ip(ip2int(net.ParseIP(ip)) + ui)
-
-	//log.Println(s.String())
 	return s.String()
 }
 
@@ -464,7 +449,6 @@ func int2ip(nn uint32) net.IP {
 // the realm specified
 func LiveAtlasServers(realm string) {
 	b := InitOfficialBaseIPs(realm)
-	//log.Println(b)
 	var l AtlasServers
 	var r Realm
 	r.RealmName = realm
@@ -477,7 +461,6 @@ func LiveAtlasServers(realm string) {
 		ipcount := (i / portsPerServer)
 		portNum := 57554 + portCount
 		grid := toGrid(i, gridSize)
-		//log.Printf("count: %v is %v and ip: %v port: %v", i, grid, ipcount, portNum)
 		g.Grid = grid
 		g.Config.AtlasIP = incIP(b, ipcount)
 		g.Config.AtlasQueryPort = strconv.Itoa(portNum)
@@ -497,17 +480,16 @@ func LiveAtlasServers(realm string) {
 		r.AddGrid(g)
 	}
 	l.AddOfficialRealm(r)
-	//PrettyPrint(l)
 
 	for _, v := range l.Official {
 		if v.RealmName == realm {
-			//PrettyPrint(v)
 			for _, g := range v.Grids {
+				g, err := CheckStatus(g)
+				if err != nil {
+					log.Printf("%v failed to get status\n", g.Grid)
+					return
+				}
 				// up := ServerPing(g.Config.AtlasIP, g.Config.AtlasQueryPort)
-				// if up == true {
-
-				//PrettyPrint(g.Info)
-				// }
 				log.Printf("%v | %v | %v:%v Pop: %v", g.Grid, g.Info.Name, g.Config.AtlasIP, g.Config.AtlasQueryPort, g.Info.Players)
 			}
 		}
@@ -541,9 +523,13 @@ func main() {
 		LiveAtlasServers(realm)
 		os.Exit(0)
 	}
-	s := *serverPtr
-	p := *portPtr
-	singleStatus(s, p)
+
+	if len(*serverPtr) > 0 && len(*portPtr) > 0 {
+		s := *serverPtr
+		p := *portPtr
+		singleStatus(s, p)
+		os.Exit(0)
+	}
 
 	//LiveAtlasServers("napve")
 	//initWeb()
