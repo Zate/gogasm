@@ -14,8 +14,8 @@ import (
 	// "github.com/zate/gogasm/rcon"
 )
 
-var debug = false
-var colorize = false
+var debug = true
+var colorize = true
 
 // CheckNoError standard error checking function
 func CheckNoError(err error) bool {
