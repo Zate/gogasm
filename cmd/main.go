@@ -540,10 +540,23 @@ func doRcon(s, p, r string) {
 	}
 	defer rc.Close()
 
-	cmd := "SaveWorld | DoExit"
+	cmd := "SaveWorld"
 
 	ri, err := rc.Write(cmd)
 	resp, rrid, err := rc.Read()
+	if err != nil {
+		if err == io.EOF {
+			return
+		}
+		log.Printf("Zip! %v", err)
+		return
+	}
+	log.Printf("%v:%v --> %v\n", ri, rrid, resp)
+
+	cmd = "DoExit"
+
+	ri, err = rc.Write(cmd)
+	resp, rrid, err = rc.Read()
 	if err != nil {
 		if err == io.EOF {
 			return
