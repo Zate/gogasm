@@ -6,11 +6,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
 	"strconv"
+	"syscall"
 	"time"
+
+	rcon "github.com/Zate/gogasm/rcon"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // CheckNoError standard error checking function
@@ -508,6 +514,47 @@ func singleStatus(s, p string) {
 	PrettyPrint(g)
 }
 
+func doRcon(s, p, r string) {
+	var g Grids
+	g.Config.AtlasIP = s
+	g.Config.AtlasQueryPort = p
+	g.Config.AtlasRCONPort = r
+	g, err := CheckStatus(g)
+	if err != nil {
+		log.Fatal("Rcon Check Status Failed")
+	}
+	g.Config.AtlasGamePort = int(g.Info.Port)
+	g.Config.AtlasGamePortAlt = int(g.Info.Port) + 1
+	fmt.Printf("Password for server %s %v:%v ", g.Grid, g.Config.AtlasIP, g.Config.AtlasRCONPort)
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		log.Fatalf("Failed to read password: %v", err)
+	}
+	password := string(bytePassword)
+	fmt.Println()
+	g.Config.AtlasAdminPass = password
+	PrettyPrint(g)
+	rc, err := rcon.Dial(g.Config.AtlasIP+":"+g.Config.AtlasRCONPort, g.Config.AtlasAdminPass)
+	if err != nil {
+		log.Fatalf("Rcon failed: %v", err)
+	}
+	defer rc.Close()
+
+	cmd := "SaveWorld | DoExit"
+
+	ri, err := rc.Write(cmd)
+	resp, rrid, err := rc.Read()
+	if err != nil {
+		if err == io.EOF {
+			return
+		}
+		log.Printf("Zip! %v", err)
+		return
+	}
+	log.Printf("%v:%v --> %v\n", ri, rrid, resp)
+
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 	//statusPtr := flag.Bool("status", false, "Check the status of the server")
@@ -516,6 +563,7 @@ func main() {
 	// pingPtr := flag.Bool("ping", false, "Simply checks if server responds to query on that port")
 	// gridPtr := flag.Bool("grid", false, "used to print out possible grid assignments based on 4 ports per IP, consecutive IP's")
 	livePtr := flag.String("live", "", "-live <realm> to run status/ping on live servers")
+	rconPtr := flag.String("r", "", "-r <port> provides the port to open a rcon connection to server")
 	flag.Parse()
 
 	if len(*livePtr) > 0 {
@@ -527,6 +575,11 @@ func main() {
 	if len(*serverPtr) > 0 && len(*portPtr) > 0 {
 		s := *serverPtr
 		p := *portPtr
+		if len(*rconPtr) > 0 {
+			r := *rconPtr
+			doRcon(s, p, r)
+			os.Exit(0)
+		}
 		singleStatus(s, p)
 		os.Exit(0)
 	}
