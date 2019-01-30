@@ -540,7 +540,7 @@ func doRcon(s, p, r string) {
 	}
 	defer rc.Close()
 
-	cmd := "SaveWorld | DoExit"
+	cmd := "SaveWorld"
 
 	ri, err := rc.Write(cmd)
 	resp, rrid, err := rc.Read()
