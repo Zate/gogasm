@@ -1,6 +1,6 @@
 github.com/Zate/gogasm/rcon v0.0.0-20190129055018-ed56df3b1745 h1:dWQy2qkjVH5xKsXKSoaPG2g8+DkNe2WcIkIUH4NruPY=
 github.com/Zate/gogasm/rcon v0.0.0-20190129055018-ed56df3b1745/go.mod h1:BNNu7j6hr0Hj6a6DonQBpdfquIE+5oQN3mSeGvKj6Yc=
-golang.org/x/crypto v0.0.0-20190128193316-c7b33c32a30b h1:Ib/yptP38nXZFMwqWSip+OKuMP9OkyDe3p+DssP8n9w=
-golang.org/x/crypto v0.0.0-20190128193316-c7b33c32a30b/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
+golang.org/x/crypto v0.0.0-20190129210102-ccddf3741a0c h1:MWY7h75sb9ioBR+s5Zgq1JYXxhbZvrSP2okwLi3ItmI=
+golang.org/x/crypto v0.0.0-20190129210102-ccddf3741a0c/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/sys v0.0.0-20190124100055-b90733256f2e h1:3GIlrlVLfkoipSReOMNAgApI0ajnalyLa/EZHHca/XI=
 golang.org/x/sys v0.0.0-20190124100055-b90733256f2e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

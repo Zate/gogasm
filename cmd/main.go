@@ -514,15 +514,32 @@ func singleStatus(s, p string) {
 	PrettyPrint(g)
 }
 
-func doRcon(s, p, r string) {
+func runCmd(rc *rcon.RemoteConsole, c string) (int, int, string, error) {
+	ri, err := rc.Write(c)
+	resp, rrid, err := rc.Read()
+	if err != nil {
+		if err == io.EOF {
+			return 0, 0, "EOF", err
+		}
+		return 0, 0, "Zip!", err
+	}
+	return ri, rrid, resp, nil
+}
+
+func doRcon(s, p, r, c string) {
 	var g Grids
 	g.Config.AtlasIP = s
 	g.Config.AtlasQueryPort = p
 	g.Config.AtlasRCONPort = r
 	g, err := CheckStatus(g)
 	if err != nil {
-		log.Fatal("Rcon Check Status Failed")
+		g, err = CheckStatus(g)
 	}
+	if err != nil {
+		log.Fatal("Rcon Check Status Failed")
+		return
+	}
+
 	g.Config.AtlasGamePort = int(g.Info.Port)
 	g.Config.AtlasGamePortAlt = int(g.Info.Port) + 1
 	fmt.Printf("Password for server %s %v:%v ", g.Grid, g.Config.AtlasIP, g.Config.AtlasRCONPort)
@@ -540,32 +557,24 @@ func doRcon(s, p, r string) {
 	}
 	defer rc.Close()
 
-	cmd := "SaveWorld"
-
-	ri, err := rc.Write(cmd)
-	resp, rrid, err := rc.Read()
-	if err != nil {
-		if err == io.EOF {
-			return
+	switch c {
+	case "Shutdown":
+		ri, rrid, resp, err := runCmd(rc, "SaveWorld")
+		if err != nil {
+			log.Fatalf("%v failed: %v", c, err)
 		}
-		log.Printf("Zip! %v", err)
-		return
-	}
-	log.Printf("%v:%v --> %v\n", ri, rrid, resp)
-
-	cmd = "DoExit"
-
-	ri, err = rc.Write(cmd)
-	resp, rrid, err = rc.Read()
-	if err != nil {
-		if err == io.EOF {
-			return
+		log.Printf("%v:%v --> %v\n", ri, rrid, resp)
+		ri, rrid, resp, err = runCmd(rc, "DoExit")
+		if err != nil {
+			log.Fatalf("%v failed: %v", c, err)
 		}
-		log.Printf("Zip! %v", err)
-		return
+	default:
+		ri, rrid, resp, err := runCmd(rc, c)
+		if err != nil {
+			log.Fatalf("%v failed: %v", c, err)
+		}
+		log.Printf("%v:%v --> %v\n", ri, rrid, resp)
 	}
-	log.Printf("%v:%v --> %v\n", ri, rrid, resp)
-
 }
 
 func main() {
@@ -577,6 +586,7 @@ func main() {
 	// gridPtr := flag.Bool("grid", false, "used to print out possible grid assignments based on 4 ports per IP, consecutive IP's")
 	livePtr := flag.String("live", "", "-live <realm> to run status/ping on live servers")
 	rconPtr := flag.String("r", "", "-r <port> provides the port to open a rcon connection to server")
+	cmdPtr := flag.String("c", "", "-c <command> will execute this rcon command")
 	flag.Parse()
 
 	if len(*livePtr) > 0 {
@@ -589,13 +599,20 @@ func main() {
 		s := *serverPtr
 		p := *portPtr
 		if len(*rconPtr) > 0 {
-			r := *rconPtr
-			doRcon(s, p, r)
+			if len(*cmdPtr) > 0 {
+				r := *rconPtr
+				c := *cmdPtr
+				doRcon(s, p, r, c)
+				os.Exit(0)
+			}
+			flag.Usage()
 			os.Exit(0)
 		}
 		singleStatus(s, p)
 		os.Exit(0)
 	}
+
+	flag.Usage()
 
 	//LiveAtlasServers("napve")
 	//initWeb()
