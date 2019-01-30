@@ -587,6 +587,7 @@ func main() {
 	livePtr := flag.String("live", "", "-live <realm> to run status/ping on live servers")
 	rconPtr := flag.String("r", "", "-r <port> provides the port to open a rcon connection to server")
 	cmdPtr := flag.String("c", "", "-c <command> will execute this rcon command")
+	webPtr := flag.String("web", "", "-web <port> launches the web server on that port")
 	flag.Parse()
 
 	if len(*livePtr) > 0 {
@@ -609,6 +610,12 @@ func main() {
 			os.Exit(0)
 		}
 		singleStatus(s, p)
+		os.Exit(0)
+	}
+
+	if len(*webPtr) > 0 {
+		p := *webPtr
+		initWeb(p)
 		os.Exit(0)
 	}
 
