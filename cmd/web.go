@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -14,7 +15,8 @@ import (
 // how to create those and to restart the server.
 
 // Ability to crawl Live servers and create a view on that
-// Live container stats via something like https://github.com/joewalnes/web-vmstats
+// Live container stats via glances.  Need to reverse proxy to each container
+// for that.
 
 func initWeb(p string) {
 	e := echo.New()
@@ -27,6 +29,21 @@ func initWeb(p string) {
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
 	}))
+
+	a1url, err := url.Parse("http://atlas-s:61208")
+	if err != nil {
+		e.Logger.Fatal(err)
+	}
+	a1target := []*middleware.ProxyTarget{
+		{
+			URL: a1url,
+		},
+	}
+
+	rrb := middleware.NewRandomBalancer(a1target)
+
+	e.Group("/a1*")
+	e.Use(middleware.Proxy(rrb))
 
 	e.GET("/", hello)
 
