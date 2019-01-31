@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:594de9d461a843725fff4bb491c494d5c85229c3befbce95f2492445f581fe2d"
+  name = "github.com/Zate/gogasm"
+  packages = ["rcon"]
+  pruneopts = "UT"
+  revision = "a9594db24c5ac763a6f91daef198c53c7f3497d3"
+
+[[projects]]
   digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
@@ -10,15 +18,15 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:1762b5812e798be5ff7fac04f79f0f05dbe7617c0292401030a31187ab59b87a"
+  digest = "1:efd601ad1d1189884f37ed075fadb5bbd17f1f5acf5862827247c6da56d125ba"
   name = "github.com/labstack/echo"
   packages = [
     ".",
     "middleware",
   ]
   pruneopts = "UT"
-  revision = "739700bf4ef7f1dca5b111dec55114fc66207aaa"
-  version = "v3.3.9"
+  revision = "38772c686c76b501f94bd6cd5b77f5842e93b559"
+  version = "v3.3.10"
 
 [[projects]]
   digest = "1:764bce605f1c70823a567ac3205a03e6b7f375ca747d8820fded0b0abddda802"
@@ -67,29 +75,35 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e3d2db9bc633f4635e6418caf0b0734c43821ecd59105d1798458c6ae4d227fd"
+  digest = "1:4078ffacb97ad7cd3968cc7acd20552234a8eb70cf5c84a7bc9d85bdcfc9ff3e"
   name = "golang.org/x/crypto"
   packages = [
     "acme",
     "acme/autocert",
+    "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "057139ce5d2bdbe6fe73c53679e24e9cf007f637"
+  revision = "b01c7a72566457eb1420261cdafef86638fc3861"
 
 [[projects]]
   branch = "master"
-  digest = "1:db12953ac7a80656b159265fe13146959beaada45938a532f484a3aeb289462e"
+  digest = "1:7941e2f16c0833b438cbef7fccfe4f8346f9f7876b42b29717a75d7e8c4800cb"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows",
+  ]
   pruneopts = "UT"
-  revision = "b90733256f2e882e81d52f9126de08df5615afd9"
+  revision = "aca44879d5644da7c5b8ec6a1115e9b6ea6c40d9"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Zate/gogasm/rcon",
     "github.com/labstack/echo",
     "github.com/labstack/echo/middleware",
+    "golang.org/x/crypto/ssh/terminal",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
