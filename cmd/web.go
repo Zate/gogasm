@@ -21,7 +21,7 @@ import (
 func initWeb(p string) {
 	e := echo.New()
 	// e.Static("/static", "static")
-	// e.File("/favicon.ico", "favicon.ico")
+	e.File("/favicon.ico", "favicon.ico")
 	// e.File("/common.css", "common.css")
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -42,16 +42,20 @@ func initWeb(p string) {
 
 	rrb := middleware.NewRandomBalancer(a1target)
 
-	e.Group("/a1*")
-	e.Use(middleware.Proxy(rrb))
+	e.Group("/a1*", middleware.Proxy(rrb))
 
 	e.GET("/", hello)
+	e.GET("/live", liveHandler)
 
 	e.Logger.Fatal(e.Start(":" + p))
 
 }
 
-// Handler
+// Handlers
 func hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, World!")
+}
+
+func liveHandler(c echo.Context) error {
+	return c.String(http.StatusOK, "Live Stuff Goes Here")
 }
