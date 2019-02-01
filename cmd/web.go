@@ -20,32 +20,50 @@ import (
 
 func initWeb(p string) {
 	e := echo.New()
+	e.Debug = true
 	// e.Static("/static", "static")
 	e.File("/favicon.ico", "favicon.ico")
 	// e.File("/common.css", "common.css")
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.HideBanner = true
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
 	}))
 
-	a1url, err := url.Parse("http://atlas-s:61208")
+	// a1url, err := url.Parse("http://atlas.zate.systems")
+	// if err != nil {
+	// 	e.Logger.Fatal(err)
+	// }
+	// a1target := []*middleware.ProxyTarget{
+	// 	{
+	// 		Name: "A1",
+	// 		URL:  a1url,
+	// 	},
+	// }
+
+	// rrb := middleware.NewRoundRobinBalancer(a1target)
+
+	// g := e.Group("/a1")
+	// g.Use(middleware.ProxyWithConfig(rrb))
+
+	a1url, err := url.Parse("http://atlas.zate.systems:80")
 	if err != nil {
 		e.Logger.Fatal(err)
 	}
-	a1target := []*middleware.ProxyTarget{
+
+	targets := []*middleware.ProxyTarget{
 		{
 			URL: a1url,
 		},
 	}
-
-	rrb := middleware.NewRandomBalancer(a1target)
-
-	e.Group("/a1*", middleware.Proxy(rrb))
-
 	e.GET("/", hello)
 	e.GET("/live", liveHandler)
+
+	g := e.Group("/a1")
+
+	g.Use(middleware.Proxy(middleware.NewRoundRobinBalancer(targets)))
 
 	e.Logger.Fatal(e.Start(":" + p))
 
