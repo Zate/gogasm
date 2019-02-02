@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	rcon "github.com/Zate/gogasm/rcon"
+	"github.com/dustin/seriesly/serieslyclient"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -453,7 +455,7 @@ func int2ip(nn uint32) net.IP {
 
 // LiveAtlasServers will build a list of all the live servers in the grid for
 // the realm specified
-func LiveAtlasServers(realm string) {
+func LiveAtlasServers(realm string) AtlasServers {
 	b := InitOfficialBaseIPs(realm)
 	var l AtlasServers
 	var r Realm
@@ -482,24 +484,36 @@ func LiveAtlasServers(realm string) {
 		// net.ip or anything just yet.  This means we could easily break things
 		// by say incrementing beyond a subnet boundary, but lets get it working
 		// right first.
-
+		g, err := CheckStatus(g)
+		if err != nil {
+			log.Printf("%v failed to get status\n", g.Grid)
+			return l
+		}
 		r.AddGrid(g)
+
+		gj, err := json.Marshal(g)
+		if err != nil {
+			log.Fatalf("Marshaling live servers to json failed: %v", err)
+		}
+		PrettyPrint(string(gj))
+
 	}
 	l.AddOfficialRealm(r)
 
-	for _, v := range l.Official {
-		if v.RealmName == realm {
-			for _, g := range v.Grids {
-				g, err := CheckStatus(g)
-				if err != nil {
-					log.Printf("%v failed to get status\n", g.Grid)
-					return
-				}
-				// up := ServerPing(g.Config.AtlasIP, g.Config.AtlasQueryPort)
-				log.Printf("%v | %v | %v:%v Pop: %v", g.Grid, g.Info.Name, g.Config.AtlasIP, g.Config.AtlasQueryPort, g.Info.Players)
-			}
-		}
-	}
+	// for _, v := range l.Official {
+	// 	if v.RealmName == realm {
+	// 		for _, g := range v.Grids {
+
+	// 			v = v.AddGrid(g)
+	// 			// up := ServerPing(g.Config.AtlasIP, g.Config.AtlasQueryPort)
+	// 			//log.Printf("%v | %v | %v:%v Pop: %v", g.Grid, g.Info.Name, g.Config.AtlasIP, g.Config.AtlasQueryPort, g.Info.Players)
+	// 		}
+	// 		l = l.AddOfficialRealm(v)
+	// 	}
+	// }
+
+	return l
+
 }
 
 func singleStatus(s, p string) {
@@ -590,9 +604,39 @@ func main() {
 	webPtr := flag.String("web", "", "-web <port> launches the web server on that port")
 	flag.Parse()
 
+	S, err := serieslyclient.New("http://localhost:3133")
+	if err != nil {
+		log.Fatalf("Something seriously fucked with the seriesly db: %v", err)
+	}
+	SDBLive := S.DB("live")
+	dbinfo, err := SDBLive.Info()
+	if err != nil {
+		log.Fatalf("Something seriously fucked with the seriesly db: %v", err)
+	}
+
+	log.Printf("DB Name is %v", dbinfo.DBName)
+
 	if len(*livePtr) > 0 {
 		realm := *livePtr
-		LiveAtlasServers(realm)
+		l := LiveAtlasServers(realm)
+		// for _, v := range l.Official {
+		// 	if v.RealmName == realm {
+		// 		for _, g := range v.Grids {
+		// 			// g, err := CheckStatus(g)
+		// 			// if err != nil {
+		// 			// 	log.Printf("%v failed to get status\n", g.Grid)
+		// 			// 	return
+		// 			// }
+		// 			// up := ServerPing(g.Config.AtlasIP, g.Config.AtlasQueryPort)
+		// 			//log.Printf("%v | %v | %v:%v Pop: %v", g.Grid, g.Info.Name, g.Config.AtlasIP, g.Config.AtlasQueryPort, g.Info.Players)
+		// 		}
+		// 	}
+		// }
+		lj, err := json.Marshal(l)
+		if err != nil {
+			log.Fatalf("Marshaling live servers to json failed: %v", err)
+		}
+		PrettyPrint(string(lj))
 		os.Exit(0)
 	}
 

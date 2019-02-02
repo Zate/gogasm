@@ -1,6 +1,8 @@
 package main
 
 import (
+	"html/template"
+	"io"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -15,9 +17,19 @@ import (
 
 // Look at using vue.js to make it all pretty
 
+// TemplateRegistry struct
+type TemplateRegistry struct {
+	templates *template.Template
+}
+
+// Render Implement e.Renderer interface
+func (t *TemplateRegistry) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
 func initWeb(p string) {
 	e := echo.New()
-	e.Static("/static", "static")
+	e.Static("/css", "frontend/css")
 	e.File("/favicon.ico", "favicon.ico")
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -26,6 +38,10 @@ func initWeb(p string) {
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
 	}))
+
+	e.Renderer = &TemplateRegistry{
+		templates: template.Must(template.ParseGlob("frontend/*.html")),
+	}
 
 	e.GET("/", hello)
 	e.GET("/live", liveHandler)
@@ -36,7 +52,14 @@ func initWeb(p string) {
 
 // Handlers
 func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, World!")
+	// return c.String(http.StatusOK, "Hello, World!")
+
+	return c.Render(http.StatusOK, "index.html", map[string]interface{}{
+		"name":   "Go Gaming Automated Server Manager",
+		"msg":    "Hello, Yeeter",
+		"author": "Bobblehead",
+		"desc":   "Manager for Atlas Server Grid on Docker",
+	})
 }
 
 func liveHandler(c echo.Context) error {
