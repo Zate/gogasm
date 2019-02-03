@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -604,14 +605,18 @@ func main() {
 	webPtr := flag.String("web", "", "-web <port> launches the web server on that port")
 	flag.Parse()
 
-	S, err := serieslyclient.New("http://localhost:3133")
+	S, err := serieslyclient.New("http://127.0.0.1:3133")
 	if err != nil {
 		log.Fatalf("Something seriously fucked with the seriesly db: %v", err)
 	}
+
 	SDBLive := S.DB("live")
 	dbinfo, err := SDBLive.Info()
 	if err != nil {
-		log.Fatalf("Something seriously fucked with the seriesly db: %v", err)
+		if strings.Contains(err.Error(), "no such file or directory") {
+			log.Fatal("Db needs to be created")
+		}
+		log.Fatalf("1 Something seriously fucked with the seriesly db: %v", err)
 	}
 
 	log.Printf("DB Name is %v", dbinfo.DBName)
