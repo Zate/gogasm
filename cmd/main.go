@@ -13,12 +13,10 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	rcon "github.com/Zate/gogasm/rcon"
-	"github.com/dustin/seriesly/serieslyclient"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -594,6 +592,9 @@ func doRcon(s, p, r, c string) {
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
+	// initDB()
+	// initLive()
+
 	//statusPtr := flag.Bool("status", false, "Check the status of the server")
 	serverPtr := flag.String("s", "", "-s <serverIP> IP Address of the server to connect to")
 	portPtr := flag.String("p", "", "-p <Port> Port on the server to connect to")
@@ -604,22 +605,6 @@ func main() {
 	cmdPtr := flag.String("c", "", "-c <command> will execute this rcon command")
 	webPtr := flag.String("web", "", "-web <port> launches the web server on that port")
 	flag.Parse()
-
-	S, err := serieslyclient.New("http://127.0.0.1:3133")
-	if err != nil {
-		log.Fatalf("Something seriously fucked with the seriesly db: %v", err)
-	}
-
-	SDBLive := S.DB("live")
-	dbinfo, err := SDBLive.Info()
-	if err != nil {
-		if strings.Contains(err.Error(), "no such file or directory") {
-			log.Fatal("Db needs to be created")
-		}
-		log.Fatalf("1 Something seriously fucked with the seriesly db: %v", err)
-	}
-
-	log.Printf("DB Name is %v", dbinfo.DBName)
 
 	if len(*livePtr) > 0 {
 		realm := *livePtr
