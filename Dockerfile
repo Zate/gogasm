@@ -11,5 +11,6 @@ WORKDIR /
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /go/src/github.com/zate/gogasm/frontend/* /frontend/
 COPY --from=builder /go/src/github.com/zate/gogasm/gogasm .
+
 #EXPOSE 2086
 CMD ["/gogasm", "-web", "8081" ]
