@@ -1,27 +1,14 @@
-# ---------------
-# Build Container
-# ---------------
-FROM golang:alpine AS build-env
+FROM golang:latest as builder
+WORKDIR /go/src/github.com/zate/gogasm/cmd/
 
-# install build tools
-# hadolint ignore=DL3018
-RUN apk add --no-cache tzdata bash wget curl git build-base openssl-dev \
-    && mkdir -p $$GOPATH/bin
+COPY *.go /go/src/github.com/zate/gogasm/cmd/
+COPY frontend /go/src/github.com/zate/gogasm/cmd/frontend
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gogasm .
 
-COPY . /go/src/github.com/xhochn/gogasm
-WORKDIR /go/src/github.com/xhochn/gogasm
-
-RUN go install ./cmd/
-
-# --------------------
-# Production Container
-# --------------------
-FROM alpine:3.8
-
-# hadolint ignore=DL3018
-RUN apk add --update --no-cache ca-certificates openssl-dev
-
-WORKDIR /app
-COPY --from=build-env /go/bin/cmd /app/
-
-ENTRYPOINT ["./cmd"]
+FROM scratch
+WORKDIR /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /go/src/github.com/zate/gogasm/gogasm/cmd/frontend /frontend
+COPY --from=builder /go/src/github.com/zate/gogasm/gogasm .
+#EXPOSE 2086
+CMD ["/gogasm", "-web", "8081" ]
