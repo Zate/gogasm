@@ -30,6 +30,7 @@ func (t *TemplateRegistry) Render(w io.Writer, name string, data interface{}, c 
 func initWeb(p string) {
 	e := echo.New()
 	e.Static("/css", "frontend/css")
+	e.Static("/js", "frontend/js")
 	e.File("/favicon.ico", "favicon.ico")
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
