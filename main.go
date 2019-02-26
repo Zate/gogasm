@@ -592,6 +592,7 @@ func doRcon(s, p, r, c string) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 	// initDB()
+	// http://callistaenterprise.se/blogg/teknik/2017/02/27/go-blog-series-part3/
 	// initLive()
 
 	//statusPtr := flag.Bool("status", false, "Check the status of the server")
